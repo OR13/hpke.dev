@@ -9,23 +9,35 @@ A fresh, first-party implementation of
 
 ## What's implemented
 
-**COSE HPKE Integrated Encryption**, single recipient, as a tagged
-`COSE_Encrypt0`:
+Both COSE HPKE modes, single recipient:
+
+### Integrated Encryption (`HPKE-0` … `HPKE-7`) — tagged `COSE_Encrypt0`
 
 ```
-16([ protected, unprotected, ciphertext ])
+16([ protected{1: alg}, unprotected{-4: ek}, ciphertext ])
 ```
 
-- protected header carries the HPKE algorithm (`1: alg`, e.g. `HPKE-0` = `35`)
-- unprotected header carries the HPKE encapsulated key (`-4: ek`, a byte string)
-- ciphertext is the HPKE `Seal` output
-- HPKE `aad` = the CBOR `Enc_structure` `["Encrypt0", protected, external_aad]`
-  (RFC 9052 §5.3); HPKE `info` is empty
+- `ek` (encapsulated key) in the unprotected header; ciphertext is the HPKE `Seal`
+  output
+- HPKE `aad` = CBOR `Enc_structure` `["Encrypt0", protected, external_aad]`
+  (RFC 9052 §5.3); HPKE `info` empty
 
-The draft-26 algorithm table (`HPKE-0`=35 … `HPKE-7`=45) lives in
-[`src/suites.ts`](./src/suites.ts). `HPKE-0` (P-256 / HKDF-SHA256 / AES-128-GCM)
-is the demo default and shares its ciphersuite with JOSE `HPKE-0`, so the same
-P-256 JWK works for both.
+### Key Encryption (`HPKE-0-KE` … `HPKE-7-KE`) — tagged `COSE_Encrypt`
+
+```
+96([ protected{1: enc}, unprotected{5: iv}, ciphertext,
+     [ [ protected{1: alg}, unprotected{-4: ek}, encrypted_key ] ] ])
+```
+
+- HPKE wraps a random CEK (`encrypted_key`); the content is encrypted with the CEK
+  using a COSE AES-GCM `enc`
+- HPKE `aad` empty; HPKE `info` = CBOR `Recipient_structure`
+  `["HPKE Recipient", enc, recipient_protected, extra]` (Section 3.3.1)
+
+The draft-26 tables (`HPKE-0`=35 … `HPKE-7`=45; `HPKE-0-KE`=46 … `HPKE-7-KE`=53)
+live in [`src/suites.ts`](./src/suites.ts). `HPKE-0` (P-256 / HKDF-SHA256 /
+AES-128-GCM) is the demo default and shares its ciphersuite with JOSE `HPKE-0`, so
+the same P-256 JWK works everywhere.
 
 ## Usage
 
@@ -35,10 +47,15 @@ import { generateKeyPair, encrypt, decrypt, publicFromPrivate } from "@hpke.dev/
 const { privateKeyJwk } = await generateKeyPair();       // HPKE-0 (P-256)
 const publicKeyJwk = publicFromPrivate(privateKeyJwk);
 
+// Integrated (default) or Key Encryption
 const cose = await encrypt(new TextEncoder().encode("hello"), publicKeyJwk);
-// -> tagged COSE_Encrypt0 bytes (Uint8Array)
+const coseKE = await encrypt(new TextEncoder().encode("hello"), publicKeyJwk, {
+  mode: "keyEncryption",
+});
 
-new TextDecoder().decode(await decrypt(cose, privateKeyJwk)); // "hello"
+// decrypt() auto-detects the mode from the CBOR tag (16 vs 96).
+new TextDecoder().decode(await decrypt(cose, privateKeyJwk));   // "hello"
+new TextDecoder().decode(await decrypt(coseKE, privateKeyJwk)); // "hello"
 ```
 
 ## Tests

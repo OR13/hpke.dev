@@ -20,11 +20,16 @@ which. Run the tests with `bun test` from that directory.
 
 The COSE path implements
 [draft-ietf-cose-hpke-26](https://datatracker.ietf.org/doc/draft-ietf-cose-hpke/)
-(HPKE `COSE_Encrypt0`, Integrated Encryption) in
-[`packages/cose-hpke`](./packages/cose-hpke), built on `panva/hpke` and
+in [`packages/cose-hpke`](./packages/cose-hpke), built on `panva/hpke` and
 [`cbor2`](https://github.com/hildjj/cbor2) — a first-party replacement for the
-previous `@transmute/cose` dependency. COSE messages are shared with the parallel
-`#gzip:base64url:hpke:cose:<…>` URL fragment scheme.
+previous `@transmute/cose` dependency. Both modes are supported: **Integrated
+Encryption** (`COSE_Encrypt0`) and **Key Encryption** (`COSE_Encrypt`, the `-KE`
+algorithms), auto-detected on decrypt from the CBOR tag. COSE messages are shared
+with the parallel `#gzip:base64url:hpke:cose:<…>` URL fragment scheme.
+
+So the demo covers all four combinations: **JOSE / COSE × Integrated / Key
+Encryption**. The decrypt page also offers one-click decryption with a built-in
+test key, so you don't have to upload a key to try shared links.
 
 ## CLI
 

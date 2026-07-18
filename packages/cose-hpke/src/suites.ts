@@ -34,8 +34,22 @@ export const COSE_HPKE_ALG = {
   "HPKE-7": 45,
 } as const;
 
-export type CoseHpkeAlgLabel = keyof typeof COSE_HPKE_ALG;
-export type CoseHpkeAlg = (typeof COSE_HPKE_ALG)[CoseHpkeAlgLabel];
+/** HPKE Key Encryption identifiers (draft-ietf-cose-hpke-26, Section 7.2). */
+export const COSE_HPKE_KE_ALG = {
+  "HPKE-0-KE": 46,
+  "HPKE-1-KE": 47,
+  "HPKE-2-KE": 48,
+  "HPKE-3-KE": 49,
+  "HPKE-4-KE": 50,
+  "HPKE-5-KE": 51,
+  "HPKE-6-KE": 52,
+  "HPKE-7-KE": 53,
+} as const;
+
+export type CoseHpkeAlgLabel = keyof typeof COSE_HPKE_ALG | keyof typeof COSE_HPKE_KE_ALG;
+export type CoseHpkeAlg =
+  | (typeof COSE_HPKE_ALG)[keyof typeof COSE_HPKE_ALG]
+  | (typeof COSE_HPKE_KE_ALG)[keyof typeof COSE_HPKE_KE_ALG];
 
 export type Crv = "P-256" | "P-384" | "P-521" | "X25519" | "X448";
 
@@ -57,7 +71,11 @@ const KEMS: Record<Crv, Pick<SuiteParams, "kty" | "crv" | "coordinateLength" | "
   X448: { kty: "OKP", crv: "X448", coordinateLength: 56, KEM: KEM_DHKEM_X448_HKDF_SHA512 },
 };
 
-/** Registry keyed by the integer COSE algorithm identifier. */
+/**
+ * Registry keyed by the integer COSE algorithm identifier. Both the Integrated
+ * (35–45) and Key Encryption (46–53) labels use the same underlying HPKE
+ * ciphersuite; the mode differs in how the COSE message is assembled.
+ */
 export const SUITE_PARAMS: Record<CoseHpkeAlg, SuiteParams> = {
   35: { label: "HPKE-0", ...KEMS["P-256"], KDF: KDF_HKDF_SHA256, AEAD: AEAD_AES_128_GCM },
   37: { label: "HPKE-1", ...KEMS["P-384"], KDF: KDF_HKDF_SHA384, AEAD: AEAD_AES_256_GCM },
@@ -67,6 +85,14 @@ export const SUITE_PARAMS: Record<CoseHpkeAlg, SuiteParams> = {
   43: { label: "HPKE-5", ...KEMS["X448"], KDF: KDF_HKDF_SHA512, AEAD: AEAD_AES_256_GCM },
   44: { label: "HPKE-6", ...KEMS["X448"], KDF: KDF_HKDF_SHA512, AEAD: AEAD_ChaCha20Poly1305 },
   45: { label: "HPKE-7", ...KEMS["P-256"], KDF: KDF_HKDF_SHA256, AEAD: AEAD_AES_256_GCM },
+  46: { label: "HPKE-0-KE", ...KEMS["P-256"], KDF: KDF_HKDF_SHA256, AEAD: AEAD_AES_128_GCM },
+  47: { label: "HPKE-1-KE", ...KEMS["P-384"], KDF: KDF_HKDF_SHA384, AEAD: AEAD_AES_256_GCM },
+  48: { label: "HPKE-2-KE", ...KEMS["P-521"], KDF: KDF_HKDF_SHA512, AEAD: AEAD_AES_256_GCM },
+  49: { label: "HPKE-3-KE", ...KEMS["X25519"], KDF: KDF_HKDF_SHA256, AEAD: AEAD_AES_128_GCM },
+  50: { label: "HPKE-4-KE", ...KEMS["X25519"], KDF: KDF_HKDF_SHA256, AEAD: AEAD_ChaCha20Poly1305 },
+  51: { label: "HPKE-5-KE", ...KEMS["X448"], KDF: KDF_HKDF_SHA512, AEAD: AEAD_AES_256_GCM },
+  52: { label: "HPKE-6-KE", ...KEMS["X448"], KDF: KDF_HKDF_SHA512, AEAD: AEAD_ChaCha20Poly1305 },
+  53: { label: "HPKE-7-KE", ...KEMS["P-256"], KDF: KDF_HKDF_SHA256, AEAD: AEAD_AES_256_GCM },
 };
 
 /** Canonical Integrated algorithm per curve. */
@@ -78,10 +104,27 @@ export const DEFAULT_ALG_FOR_CRV: Record<Crv, CoseHpkeAlg> = {
   X448: 43,
 };
 
+/** Canonical Key Encryption algorithm per curve. */
+export const DEFAULT_KE_ALG_FOR_CRV: Record<Crv, CoseHpkeAlg> = {
+  "P-256": 46,
+  "P-384": 47,
+  "P-521": 48,
+  X25519: 49,
+  X448: 51,
+};
+
 const suiteCache = new Map<CoseHpkeAlg, CipherSuite>();
 
 export function isCoseHpkeAlg(alg: unknown): alg is CoseHpkeAlg {
   return typeof alg === "number" && alg in SUITE_PARAMS;
+}
+
+export function isIntegratedAlg(alg: number): alg is CoseHpkeAlg {
+  return alg >= 35 && alg <= 45 && alg in SUITE_PARAMS;
+}
+
+export function isKeyEncryptionAlg(alg: number): alg is CoseHpkeAlg {
+  return alg >= 46 && alg <= 53 && alg in SUITE_PARAMS;
 }
 
 export function paramsForAlg(alg: CoseHpkeAlg): SuiteParams {

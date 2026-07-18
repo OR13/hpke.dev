@@ -14,7 +14,8 @@ import {
   decodeHpkeCoseFragment,
   isHpkeCoseFragment,
 } from "@/services/hpke-url";
-import { LockKeyOpenIcon, CopyIcon } from "@phosphor-icons/react";
+import { TEST_KEYS } from "@/services/test-keys";
+import { LockKeyOpenIcon, CopyIcon, FlaskIcon } from "@phosphor-icons/react";
 
 import {
   Card,
@@ -46,9 +47,8 @@ export function DecryptPanel({ fragment }: { fragment: string }) {
 
   const raw = fragment;
 
-  const onDropPrivateKey = async (files: File[]) => {
+  const decryptWith = async (privateKey: Jwk) => {
     try {
-      const privateKey = JSON.parse(await files[0].text()) as Jwk;
       const plaintext = isCose
         ? await coseDecrypt(decodeHpkeCoseFragment(fragment), privateKey)
         : await hpkeDecrypt(decodeHpkeJweFragment(fragment), privateKey);
@@ -57,6 +57,14 @@ export function DecryptPanel({ fragment }: { fragment: string }) {
       toast.error("Decryption failed.", {
         description: "Wrong key, or the message is malformed.",
       });
+    }
+  };
+
+  const onDropPrivateKey = async (files: File[]) => {
+    try {
+      await decryptWith(JSON.parse(await files[0].text()) as Jwk);
+    } catch {
+      toast.error("That doesn't look like a private key JWK.");
     }
   };
 
@@ -96,11 +104,30 @@ export function DecryptPanel({ fragment }: { fragment: string }) {
             </pre>
           </div>
         ) : (
-          <FileDrop
-            dragText="Drag the exported private key here"
-            dropText="Drop to decrypt."
-            onFilesAccepted={onDropPrivateKey}
-          />
+          <div className="space-y-3">
+            <FileDrop
+              dragText="Drag the exported private key here"
+              dropText="Drop to decrypt."
+              onFilesAccepted={onDropPrivateKey}
+            />
+            {TEST_KEYS.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Or decrypt with a built-in test key:
+                </span>
+                {TEST_KEYS.map((k) => (
+                  <Button
+                    key={k.name}
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => decryptWith(k.privateKeyJwk)}
+                  >
+                    <FlaskIcon className="size-4" weight="bold" /> {k.name}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         )}
       </CardContent>
     </Card>

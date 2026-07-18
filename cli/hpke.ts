@@ -94,10 +94,11 @@ async function encryptCmd(flags: Record<string, string>) {
 
   let url: string;
   let modeLabel: string;
-  if (mode === "cose") {
-    const coseBytes = await coseEncrypt(plaintext, publicKeyJwk);
+  if (mode === "cose" || mode === "cose-ke") {
+    const coseMode = mode === "cose-ke" ? "keyEncryption" : "integrated";
+    const coseBytes = await coseEncrypt(plaintext, publicKeyJwk, { mode: coseMode });
     url = `${base}/decrypt#${encodeHpkeCoseFragment(coseBytes)}`;
-    modeLabel = "COSE Encrypt0";
+    modeLabel = `COSE ${coseMode}`;
   } else {
     const jwe = await encrypt(plaintext, publicKeyJwk, {
       mode: mode as HpkeMode,
@@ -141,7 +142,8 @@ const HELP = `hpke.dev test CLI
 
 Commands:
   keygen  --name <n> [--alg HPKE-0] [--out test-keys]
-  encrypt --to <public.json> --message "<text>" [--mode integrated|keyEncryption|cose]
+  encrypt --to <public.json> --message "<text>"
+          [--mode integrated|keyEncryption|cose|cose-ke]
           [--enc A128GCM|A192GCM|A256GCM] [--base https://hpke.dev]
   decrypt --key <private.json> --url "<url-or-fragment>"
 `;
