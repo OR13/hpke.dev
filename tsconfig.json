@@ -24,6 +24,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@hpke-jose": [
+        "./packages/hpke-jose/src/index.ts"
       ]
     }
   },
@@ -35,7 +38,9 @@
     "dist/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "packages/**/test",
+    "packages/**/*.test.ts"
   ]
 }
 

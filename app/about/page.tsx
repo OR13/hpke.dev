@@ -29,13 +29,13 @@ const resources = [
   },
   {
     primary: "Use of Hybrid Public-Key Encryption (HPKE) with Javascript Object Signing and Encryption (JOSE)",
-    secondary: "draft-rha-jose-hpke-encrypt",
-    link: "https://datatracker.ietf.org/doc/draft-rha-jose-hpke-encrypt/",
+    secondary: "draft-ietf-jose-hpke-encrypt",
+    link: "https://datatracker.ietf.org/doc/draft-ietf-jose-hpke-encrypt/",
   },
   {
-    primary: "hpke-js",
-    secondary: "A Hybrid Public Key Encryption (HPKE) module built on top of Web Cryptography API.",
-    link: "https://github.com/dajiaji/hpke-js",
+    primary: "hpke",
+    secondary: "Hybrid Public Key Encryption (HPKE) for Node.js, Browser, Deno, Bun, and other Web-interoperable runtimes.",
+    link: "https://github.com/panva/hpke",
   },
   {
     primary: "t_cose",

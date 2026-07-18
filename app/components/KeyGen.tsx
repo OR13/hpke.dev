@@ -55,7 +55,7 @@ export const KeyGen = () =>{
     const publicKeyJwk = await jose.exportJWK(k.publicKey);
     const privateKeyJwk = await jose.exportJWK(k.privateKey);
     const kid = await jose.calculateJwkThumbprintUri(publicKeyJwk)
-    const alg = 'HPKE-Base-P256-SHA256-AES128GCM'
+    const alg = 'HPKE-0'
     setPrivateKey(orderJwk({kid, alg, ...privateKeyJwk}))
     setPublicKey(orderJwk({kid, alg, ...publicKeyJwk}))
   }

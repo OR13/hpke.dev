@@ -5,14 +5,14 @@ import AppBar from "../components/AppBar";
 import { useEffect, useState } from "react";
 
 import { Decrypt } from "../components/Decrypt";
+import { isHpkeJweFragment } from "@/services/hpke-url";
 
 export default function DecryptPage() {
-  const [jwe, setJwe] = useState();
+  const [hpkeJweFragment, setHpkeJweFragment] = useState<string>();
   const [encodedCompressedCoseEncrypt0, setEncodedCompressedCoseEncrypt0] = useState();
   useEffect(() => {
-    if (window.location.hash.startsWith("#jwe:")) {
-      const jwe = window.location.hash.replace('#jwe:', '') as any
-      setJwe(jwe)
+    if (isHpkeJweFragment(window.location.hash)) {
+      setHpkeJweFragment(window.location.hash)
     }
 
     if (window.location.hash.startsWith("#cose-encrypt0:")) {
@@ -22,9 +22,9 @@ export default function DecryptPage() {
   }, []);
   return (
     <AppBar>
-      {(jwe || encodedCompressedCoseEncrypt0)? (
+      {(hpkeJweFragment || encodedCompressedCoseEncrypt0)? (
         <>
-          <Decrypt jwe={jwe} encodedCompressedCoseEncrypt0={encodedCompressedCoseEncrypt0}/>
+          <Decrypt hpkeJweFragment={hpkeJweFragment} encodedCompressedCoseEncrypt0={encodedCompressedCoseEncrypt0}/>
         </>
       ) : (
         <>

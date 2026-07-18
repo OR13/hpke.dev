@@ -1,7 +1,7 @@
 "use client";
 
 
-import { Button, Box } from "@mui/material";
+import { Button, Box, ToggleButton, ToggleButtonGroup } from "@mui/material";
 
 import * as React from "react";
 import * as jose from "jose";
@@ -13,7 +13,8 @@ import { Chip } from "@mui/material";
 
 import LockPerson from "@mui/icons-material/LockPerson";
 
-import { compact } from "@/services/jose-hpke"; 
+import { encrypt as hpkeEncrypt, type HpkeMode } from "@hpke-jose";
+import { encodeHpkeJweFragment } from "@/services/hpke-url";
 
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
@@ -31,11 +32,16 @@ export function Encrypt({publicKeyJwk}: {publicKeyJwk: any}) {
 # Markdown Message
 > ⌛ My lungs taste the air of Time Blown past falling sands ⌛
   `.trim()+'\n')
+  // Both HPKE JWE formats from draft-ietf-jose-hpke-encrypt-22.
+  const [hpkeMode, setHpkeMode] = React.useState<HpkeMode>('integrated')
   const encryptTo = async (type: 'jose'| 'cose') => {
     const plaintext = new TextEncoder().encode(message)
     if (type === 'jose'){
-      const jwe = await compact.encrypt(plaintext, publicKeyJwk)
-      const hash = '/decrypt#jwe:' + jwe
+      const jwe = await hpkeEncrypt(plaintext, publicKeyJwk, {
+        mode: hpkeMode,
+        protectedHeader: publicKeyJwk.kid ? { kid: publicKeyJwk.kid } : undefined,
+      })
+      const hash = '/decrypt#' + encodeHpkeJweFragment(jwe)
       window.location.href = window.location.origin + hash
     } else if (type === 'cose'){
       const ciphertext = await cose.encrypt.direct({
@@ -60,7 +66,25 @@ export function Encrypt({publicKeyJwk}: {publicKeyJwk: any}) {
             Recipient
           </Typography>
         </Box>
-        <Box>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            color="secondary"
+            value={hpkeMode}
+            onChange={(_e, value) => {
+              if (value) setHpkeMode(value as HpkeMode)
+            }}
+            aria-label="HPKE JWE format"
+            sx={{ mr: 2 }}
+          >
+            <ToggleButton value="integrated" aria-label="Integrated Encryption">
+              Integrated
+            </ToggleButton>
+            <ToggleButton value="keyEncryption" aria-label="Key Encryption">
+              Key Encryption
+            </ToggleButton>
+          </ToggleButtonGroup>
           <Button
             variant="outlined"
             color="secondary"

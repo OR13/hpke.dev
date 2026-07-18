@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+packages/*/node_modules
+bun.lock
+bun.lockb
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -37,3 +40,6 @@ next-env.d.ts
 
 
 dist
+
+# nested next build artifacts
+packages/*/.next/
