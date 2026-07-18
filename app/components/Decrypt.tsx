@@ -5,7 +5,8 @@ import * as React from "react";
 import Typography from "@mui/material/Typography";
 import { Chip } from "@mui/material";
 import LockPerson from "@mui/icons-material/LockPerson";
-import { compact } from "@/services/jose-hpke";
+import { integrated } from "@hpke-jose";
+import { decodeHpkeJweFragment } from "@/services/hpke-url";
 import { Dropzone } from "@/app/components/Dropzone";
 import NoEncryptionIcon from "@mui/icons-material/NoEncryption";
 import Avatar from "@mui/material/Avatar";
@@ -25,22 +26,23 @@ import * as cose from "@transmute/cose";
 import pako from "pako";
 
 export function Decrypt({
-  jwe,
+  hpkeJweFragment,
   encodedCompressedCoseEncrypt0,
 }: {
-  jwe?: string;
+  hpkeJweFragment?: string;
   encodedCompressedCoseEncrypt0?: string;
 }) {
-  let text = `${jwe ? jwe : encodedCompressedCoseEncrypt0}`;
+  let text = `${hpkeJweFragment ? hpkeJweFragment : encodedCompressedCoseEncrypt0}`;
   const [snackMessage, setSnackMessage] = React.useState("");
   const [message, setMessage] = React.useState() as any;
   const handleFilesAccepted = async (files: File[]) => {
-    if (jwe) {
+    if (hpkeJweFragment) {
       try {
         const [file] = files;
         const privateKeyText = await file.text();
         const privateKey = JSON.parse(privateKeyText);
-        const plaintext = await compact.decrypt(jwe, privateKey);
+        const jwe = decodeHpkeJweFragment(hpkeJweFragment);
+        const plaintext = await integrated.decrypt(jwe, privateKey);
         setMessage(new TextDecoder().decode(plaintext));
       } catch (e) {
         setSnackMessage("Decryption failed.");

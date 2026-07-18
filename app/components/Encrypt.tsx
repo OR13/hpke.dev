@@ -13,7 +13,8 @@ import { Chip } from "@mui/material";
 
 import LockPerson from "@mui/icons-material/LockPerson";
 
-import { compact } from "@/services/jose-hpke"; 
+import { integrated } from "@hpke-jose";
+import { encodeHpkeJweFragment } from "@/services/hpke-url";
 
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
@@ -34,8 +35,10 @@ export function Encrypt({publicKeyJwk}: {publicKeyJwk: any}) {
   const encryptTo = async (type: 'jose'| 'cose') => {
     const plaintext = new TextEncoder().encode(message)
     if (type === 'jose'){
-      const jwe = await compact.encrypt(plaintext, publicKeyJwk)
-      const hash = '/decrypt#jwe:' + jwe
+      const jwe = await integrated.encrypt(plaintext, publicKeyJwk, {
+        protectedHeader: publicKeyJwk.kid ? { kid: publicKeyJwk.kid } : undefined,
+      })
+      const hash = '/decrypt#' + encodeHpkeJweFragment(jwe)
       window.location.href = window.location.origin + hash
     } else if (type === 'cose'){
       const ciphertext = await cose.encrypt.direct({
