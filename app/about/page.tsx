@@ -40,9 +40,9 @@ const resources = [
     link: "https://github.com/panva/jose",
   },
   {
-    primary: "@transmute/cose",
-    secondary: "COSE (including COSE HPKE) for JavaScript.",
-    link: "https://github.com/transmute-industries/cose",
+    primary: "cbor2",
+    secondary: "Modern, web-first CBOR for JavaScript — powers the in-repo COSE HPKE implementation.",
+    link: "https://github.com/hildjj/cbor2",
   },
 ];
 

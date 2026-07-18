@@ -4,7 +4,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { encrypt as hpkeEncrypt, type HpkeMode, type Jwk } from "@hpke-jose";
-import { encodeHpkeJweFragment } from "@/services/hpke-url";
+import { encrypt as coseEncrypt } from "@cose-hpke";
+import { encodeHpkeJweFragment, encodeHpkeCoseFragment } from "@/services/hpke-url";
 import { LockKeyIcon } from "@phosphor-icons/react";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,16 @@ export function EncryptPanel({ publicKeyJwk }: { publicKeyJwk: Jwk }) {
       router.push(`/decrypt#${encodeHpkeJweFragment(jwe)}`);
     } catch (e) {
       toast.error("Encryption failed.", { description: String(e) });
+    }
+  };
+
+  const encryptCose = async () => {
+    try {
+      const plaintext = new TextEncoder().encode(message);
+      const coseBytes = await coseEncrypt(plaintext, publicKeyJwk);
+      router.push(`/decrypt#${encodeHpkeCoseFragment(coseBytes)}`);
+    } catch (e) {
+      toast.error("COSE encryption failed.", { description: String(e) });
     }
   };
 
@@ -78,9 +89,14 @@ export function EncryptPanel({ publicKeyJwk }: { publicKeyJwk: Jwk }) {
             </Tabs>
           </div>
 
-          <Button onClick={encryptJose}>
-            <LockKeyIcon className="size-4" weight="bold" /> Encrypt &amp; get link
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={encryptCose}>
+              <LockKeyIcon className="size-4" weight="bold" /> COSE encrypt
+            </Button>
+            <Button onClick={encryptJose}>
+              <LockKeyIcon className="size-4" weight="bold" /> JOSE encrypt
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
