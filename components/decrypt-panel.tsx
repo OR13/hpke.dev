@@ -15,7 +15,12 @@ import {
   isHpkeCoseFragment,
 } from "@/services/hpke-url";
 import { TEST_KEYS } from "@/services/test-keys";
-import { LockKeyOpenIcon, CopyIcon, FlaskIcon } from "@phosphor-icons/react";
+import {
+  LockKeyOpenIcon,
+  CopyIcon,
+  FlaskIcon,
+  CheckCircleIcon,
+} from "@phosphor-icons/react";
 
 import {
   Card,
@@ -29,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { FileDrop } from "@/components/file-drop";
 
 export function DecryptPanel({ fragment }: { fragment: string }) {
-  const [message, setMessage] = React.useState<string>();
+  const [result, setResult] = React.useState<{ text: string; bytes: number }>();
   const isCose = isHpkeCoseFragment(fragment);
 
   const format = React.useMemo(() => {
@@ -52,7 +57,8 @@ export function DecryptPanel({ fragment }: { fragment: string }) {
       const plaintext = isCose
         ? await coseDecrypt(decodeHpkeCoseFragment(fragment), privateKey)
         : await hpkeDecrypt(decodeHpkeJweFragment(fragment), privateKey);
-      setMessage(new TextDecoder().decode(plaintext));
+      setResult({ text: new TextDecoder().decode(plaintext), bytes: plaintext.length });
+      toast.success("Decryption succeeded.");
     } catch {
       toast.error("Decryption failed.", {
         description: "Wrong key, or the message is malformed.",
@@ -82,26 +88,53 @@ export function DecryptPanel({ fragment }: { fragment: string }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <button
-          type="button"
-          onClick={() => {
-            navigator.clipboard.writeText(raw);
-            toast.success("Copied encrypted payload to clipboard.");
-          }}
-          className="flex w-full items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted"
-        >
-          <CopyIcon className="size-4 shrink-0" weight="bold" />
-          <span className="truncate font-mono">{raw.slice(0, 96)}…</span>
-        </button>
+        <div className="space-y-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Encrypted payload (ciphertext)
+          </span>
+          <button
+            type="button"
+            title="Copy the full encrypted payload"
+            onClick={() => {
+              navigator.clipboard.writeText(raw);
+              toast.success("Copied encrypted payload to clipboard.");
+            }}
+            className="flex w-full items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <CopyIcon className="size-4 shrink-0" weight="bold" />
+            <span className="truncate font-mono">{raw.slice(0, 96)}…</span>
+          </button>
+        </div>
 
-        {message !== undefined ? (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-              <LockKeyOpenIcon className="size-4" weight="fill" /> Decrypted
+        {result !== undefined ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+              <CheckCircleIcon className="size-5 shrink-0" weight="fill" />
+              <span>Decryption succeeded — {format}</span>
             </div>
-            <pre className="overflow-auto whitespace-pre-wrap text-sm leading-relaxed">
-              {message}
-            </pre>
+
+            <div className="overflow-hidden rounded-lg border border-border">
+              <div className="flex items-center justify-between border-b border-border bg-muted/60 px-3 py-2">
+                <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <LockKeyOpenIcon className="size-4" weight="fill" /> Recovered plaintext
+                </span>
+                <span className="text-xs text-muted-foreground">{result.bytes} bytes</span>
+              </div>
+              <pre className="max-h-96 overflow-auto whitespace-pre-wrap bg-card p-4 text-sm leading-relaxed text-foreground">
+                {result.text}
+              </pre>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(result.text);
+                toast.success("Copied plaintext to clipboard.");
+              }}
+            >
+              <CopyIcon className="size-4" weight="bold" /> Copy plaintext
+            </Button>
           </div>
         ) : (
           <div className="space-y-3">
