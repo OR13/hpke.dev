@@ -1,80 +1,78 @@
-import AppBar from "../components/AppBar";
+import type { Metadata } from "next";
+import { ArrowSquareOutIcon, LinkSimpleIcon } from "@phosphor-icons/react/dist/ssr";
 
-import * as React from "react";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemAvatar from "@mui/material/ListItemAvatar";
-import ListItemText from "@mui/material/ListItemText";
-import Avatar from "@mui/material/Avatar";
-import IconButton from "@mui/material/IconButton";
-import Typography from "@mui/material/Typography";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import DatasetLinkedIcon from "@mui/icons-material/DatasetLinked";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+import { Card, CardContent } from "@/components/ui/card";
+
+export const metadata: Metadata = { title: "About" };
 
 const resources = [
   {
     primary: "hpke.dev",
-    secondary: "HPKE Interoperability for JOSE and COSE ",
-    link: "https://github.com/transmute-industries/hpke.dev",
+    secondary: "HPKE interoperability for JOSE and COSE.",
+    link: "https://github.com/OR13/hpke.dev",
   },
   {
-    primary: "Hybrid Public Key Encryption",
-    secondary: "RFC 9180",
-    link: "https://datatracker.ietf.org/doc/rfc9180/",
+    primary: "Use of HPKE with JOSE",
+    secondary: "draft-ietf-jose-hpke-encrypt — the format this demo implements.",
+    link: "https://datatracker.ietf.org/doc/draft-ietf-jose-hpke-encrypt/",
   },
   {
-    primary: "Use of Hybrid Public-Key Encryption (HPKE) with CBOR Object Signing and Encryption (COSE)",
+    primary: "Use of HPKE with COSE",
     secondary: "draft-ietf-cose-hpke",
     link: "https://datatracker.ietf.org/doc/draft-ietf-cose-hpke/",
   },
   {
-    primary: "Use of Hybrid Public-Key Encryption (HPKE) with Javascript Object Signing and Encryption (JOSE)",
-    secondary: "draft-ietf-jose-hpke-encrypt",
-    link: "https://datatracker.ietf.org/doc/draft-ietf-jose-hpke-encrypt/",
+    primary: "Hybrid Public Key Encryption",
+    secondary: "RFC 9180",
+    link: "https://www.rfc-editor.org/rfc/rfc9180.html",
   },
   {
-    primary: "hpke",
-    secondary: "Hybrid Public Key Encryption (HPKE) for Node.js, Browser, Deno, Bun, and other Web-interoperable runtimes.",
+    primary: "panva/hpke",
+    secondary:
+      "Hybrid Public Key Encryption for Node.js, Browser, Deno, Bun, and other Web-interoperable runtimes.",
     link: "https://github.com/panva/hpke",
   },
   {
-    primary: "t_cose",
-    secondary: "Commercial quality COSE_Sign1 implementation in C for constrained environment. Works with MbtedTLS and OpenSSL Crypto.",
-    link: "https://github.com/laurencelundblade/t_cose",
+    primary: "panva/jose",
+    secondary: "JWA, JWS, JWE, JWT, JWK, JWKS for Web-interoperable runtimes.",
+    link: "https://github.com/panva/jose",
+  },
+  {
+    primary: "@transmute/cose",
+    secondary: "COSE (including COSE HPKE) for JavaScript.",
+    link: "https://github.com/transmute-industries/cose",
   },
 ];
 
-export default function About() {
+export default function AboutPage() {
   return (
-    <AppBar>
-      <Typography sx={{ mb: 2 }} variant="h6" component="div">
-        Resources
-      </Typography>
-      <List>
-        {resources.map((resource) => {
-          return (
-            <ListItem
-              key={resource.link}
-              secondaryAction={
-                <IconButton edge="end" aria-label="open" href={resource.link}>
-                  <OpenInNewIcon />
-                </IconButton>
-              }
-            >
-              <ListItemAvatar>
-                <Avatar>
-                  <DatasetLinkedIcon />
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText
-             
-                primary={resource.primary}
-                secondary={resource.secondary}
-              />
-            </ListItem>
-          );
-        })}
-      </List>
-    </AppBar>
+    <div className="flex min-h-dvh flex-col">
+      <SiteHeader />
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
+        <h1 className="mb-2 font-heading text-2xl font-bold tracking-tight">Resources</h1>
+        <p className="mb-8 text-sm text-muted-foreground">
+          Specifications and libraries behind this playground.
+        </p>
+        <div className="space-y-3">
+          {resources.map((r) => (
+            <a key={r.link} href={r.link} target="_blank" rel="noreferrer" className="block">
+              <Card className="transition-colors hover:border-foreground/30 hover:bg-muted/40">
+                <CardContent className="flex items-center gap-4 py-4">
+                  <LinkSimpleIcon className="size-5 shrink-0 text-muted-foreground" weight="bold" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-heading font-medium">{r.primary}</div>
+                    <div className="text-sm text-muted-foreground">{r.secondary}</div>
+                  </div>
+                  <ArrowSquareOutIcon className="size-4 shrink-0 text-muted-foreground" weight="bold" />
+                </CardContent>
+              </Card>
+            </a>
+          ))}
+        </div>
+      </main>
+      <SiteFooter />
+    </div>
   );
 }

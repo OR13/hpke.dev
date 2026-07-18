@@ -2,16 +2,35 @@
 
 Interoperability testing for JOSE and COSE based HPKE Envelopes.
 
-Work in progress...
+An interactive playground: encrypt a message to a public key and share it as a
+link. Built with **Next.js 16 (App Router, Turbopack) · React 19 · Tailwind v4 ·
+shadcn/ui (base-lyra)**.
 
 ## JOSE HPKE
 
 The JOSE path implements
 [draft-ietf-jose-hpke-encrypt-22](https://datatracker.ietf.org/doc/draft-ietf-jose-hpke-encrypt/)
-(HPKE Integrated Encryption, `HPKE-0` / P-256) in
-[`packages/hpke-jose`](./packages/hpke-jose), built on
-[`panva/hpke`](https://github.com/panva/hpke). Run its tests with `bun test`
-from that directory.
+in [`packages/hpke-jose`](./packages/hpke-jose), built on
+[`panva/hpke`](https://github.com/panva/hpke) and [`panva/jose`](https://github.com/panva/jose).
+Both draft formats are supported — **Integrated Encryption** (`HPKE-0`…`HPKE-7`)
+and **Key Encryption** (`HPKE-0-KE`…`HPKE-7-KE`) — and `decrypt()` auto-detects
+which. Run the tests with `bun test` from that directory.
+
+## CLI
+
+A small [`cli/hpke.ts`](./cli/hpke.ts) (run with Bun) generates clickable test
+links against the live site:
+
+```sh
+# encrypt to a committed test key and print a shareable link
+bun run cli/hpke.ts encrypt --to test-keys/alice.public.json -m "hello" --mode integrated
+# → https://hpke.dev/decrypt#gzip:base64url:hpke:jwe:…
+
+# verify it round-trips, no browser needed
+bun run cli/hpke.ts decrypt --key test-keys/alice.private.json --url "<link>"
+```
+
+See [`test-keys/`](./test-keys) for the throwaway keys.
 
 ## Sharing messages by URL
 
