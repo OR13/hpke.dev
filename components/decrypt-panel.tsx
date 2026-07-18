@@ -8,7 +8,12 @@ import {
   type HpkeJwe,
   type Jwk,
 } from "@hpke-jose";
-import { decodeHpkeJweFragment } from "@/services/hpke-url";
+import { decrypt as coseDecrypt, readAlg, SUITE_PARAMS } from "@cose-hpke";
+import {
+  decodeHpkeJweFragment,
+  decodeHpkeCoseFragment,
+  isHpkeCoseFragment,
+} from "@/services/hpke-url";
 import { LockKeyOpenIcon, CopyIcon } from "@phosphor-icons/react";
 
 import {
@@ -22,24 +27,32 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileDrop } from "@/components/file-drop";
 
-export function DecryptPanel({ hpkeJweFragment }: { hpkeJweFragment: string }) {
+export function DecryptPanel({ fragment }: { fragment: string }) {
   const [message, setMessage] = React.useState<string>();
+  const isCose = isHpkeCoseFragment(fragment);
 
   const format = React.useMemo(() => {
     try {
-      return `JOSE HPKE · ${jweMode(decodeHpkeJweFragment(hpkeJweFragment) as HpkeJwe)}`;
+      if (isCose) {
+        const alg = readAlg(decodeHpkeCoseFragment(fragment));
+        const label = alg ? SUITE_PARAMS[alg]?.label : undefined;
+        return `COSE HPKE · Encrypt0${label ? ` · ${label}` : ""}`;
+      }
+      return `JOSE HPKE · ${jweMode(decodeHpkeJweFragment(fragment) as HpkeJwe)}`;
     } catch {
-      return "JOSE HPKE";
+      return isCose ? "COSE HPKE" : "JOSE HPKE";
     }
-  }, [hpkeJweFragment]);
+  }, [fragment, isCose]);
 
-  const raw = hpkeJweFragment;
+  const raw = fragment;
 
   const onDropPrivateKey = async (files: File[]) => {
     try {
       const privateKey = JSON.parse(await files[0].text()) as Jwk;
-      const jwe = decodeHpkeJweFragment(hpkeJweFragment);
-      setMessage(new TextDecoder().decode(await hpkeDecrypt(jwe, privateKey)));
+      const plaintext = isCose
+        ? await coseDecrypt(decodeHpkeCoseFragment(fragment), privateKey)
+        : await hpkeDecrypt(decodeHpkeJweFragment(fragment), privateKey);
+      setMessage(new TextDecoder().decode(plaintext));
     } catch {
       toast.error("Decryption failed.", {
         description: "Wrong key, or the message is malformed.",

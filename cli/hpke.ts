@@ -24,7 +24,14 @@ import {
   type IntegratedAlg,
   type Jwk,
 } from "@hpke-jose";
-import { encodeHpkeJweFragment, decodeHpkeJweFragment } from "../services/hpke-url";
+import { encrypt as coseEncrypt, decrypt as coseDecrypt } from "@cose-hpke";
+import {
+  encodeHpkeJweFragment,
+  decodeHpkeJweFragment,
+  encodeHpkeCoseFragment,
+  decodeHpkeCoseFragment,
+  isHpkeCoseFragment,
+} from "../services/hpke-url";
 
 const DEFAULT_BASE = "https://hpke.dev";
 
@@ -81,17 +88,27 @@ async function encryptCmd(flags: Record<string, string>) {
   if (!flags.to) throw new Error("encrypt requires --to <public-key.json>");
   const publicKeyJwk = await readJwk(flags.to);
   const message = await readMessage(flags);
-  const mode = (flags.mode ?? "integrated") as HpkeMode;
+  const mode = flags.mode ?? "integrated";
   const base = (flags.base ?? DEFAULT_BASE).replace(/\/$/, "");
+  const plaintext = new TextEncoder().encode(message);
 
-  const jwe = await encrypt(new TextEncoder().encode(message), publicKeyJwk, {
-    mode,
-    enc: flags.enc as never,
-    protectedHeader: publicKeyJwk.kid ? { kid: publicKeyJwk.kid } : undefined,
-  });
-  const url = `${base}/decrypt#${encodeHpkeJweFragment(jwe)}`;
+  let url: string;
+  let modeLabel: string;
+  if (mode === "cose") {
+    const coseBytes = await coseEncrypt(plaintext, publicKeyJwk);
+    url = `${base}/decrypt#${encodeHpkeCoseFragment(coseBytes)}`;
+    modeLabel = "COSE Encrypt0";
+  } else {
+    const jwe = await encrypt(plaintext, publicKeyJwk, {
+      mode: mode as HpkeMode,
+      enc: flags.enc as never,
+      protectedHeader: publicKeyJwk.kid ? { kid: publicKeyJwk.kid } : undefined,
+    });
+    url = `${base}/decrypt#${encodeHpkeJweFragment(jwe)}`;
+    modeLabel = `JOSE ${jweMode(jwe)}`;
+  }
 
-  console.error(`mode:      ${jweMode(jwe)}`);
+  console.error(`mode:      ${modeLabel}`);
   console.error(`recipient: ${publicKeyJwk.kid ?? "(no kid)"}`);
   console.error(`url length: ${url.length}`);
   console.error("");
@@ -103,9 +120,15 @@ async function decryptCmd(flags: Record<string, string>) {
   if (!flags.url) throw new Error("decrypt requires --url <url-or-fragment>");
   const privateKeyJwk = await readJwk(flags.key);
   const fragment = flags.url.includes("#") ? "#" + flags.url.split("#")[1] : flags.url;
-  const jwe = decodeHpkeJweFragment(fragment);
-  const plaintext = await decrypt(jwe, privateKeyJwk);
-  console.error(`mode: ${jweMode(jwe)}`);
+  let plaintext: Uint8Array;
+  if (isHpkeCoseFragment(fragment)) {
+    plaintext = await coseDecrypt(decodeHpkeCoseFragment(fragment), privateKeyJwk);
+    console.error("mode: COSE Encrypt0");
+  } else {
+    const jwe = decodeHpkeJweFragment(fragment);
+    plaintext = await decrypt(jwe, privateKeyJwk);
+    console.error(`mode: JOSE ${jweMode(jwe)}`);
+  }
   console.error("");
   process.stdout.write(new TextDecoder().decode(plaintext));
   if (!process.stdout.write("")) {
@@ -118,7 +141,7 @@ const HELP = `hpke.dev test CLI
 
 Commands:
   keygen  --name <n> [--alg HPKE-0] [--out test-keys]
-  encrypt --to <public.json> --message "<text>" [--mode integrated|keyEncryption]
+  encrypt --to <public.json> --message "<text>" [--mode integrated|keyEncryption|cose]
           [--enc A128GCM|A192GCM|A256GCM] [--base https://hpke.dev]
   decrypt --key <private.json> --url "<url-or-fragment>"
 `;
