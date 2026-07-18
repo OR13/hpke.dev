@@ -1,6 +1,6 @@
 import pako from "pako";
 import { base64url } from "jose";
-import type { HpkeIntegratedJwe } from "@hpke-jose";
+import type { HpkeJwe } from "@hpke-jose";
 
 /**
  * URL fragment scheme for sharing an HPKE JWE inside a link.
@@ -17,7 +17,7 @@ export const HPKE_JWE_FRAGMENT_PREFIX = "gzip:base64url:hpke:jwe:";
 
 const stripHash = (fragment: string) => fragment.replace(/^#/, "");
 
-export function encodeHpkeJweFragment(jwe: HpkeIntegratedJwe): string {
+export function encodeHpkeJweFragment(jwe: HpkeJwe): string {
   const json = new TextEncoder().encode(JSON.stringify(jwe));
   const gzipped = pako.gzip(json);
   return HPKE_JWE_FRAGMENT_PREFIX + base64url.encode(gzipped);
@@ -27,12 +27,12 @@ export function isHpkeJweFragment(fragment: string): boolean {
   return stripHash(fragment).startsWith(HPKE_JWE_FRAGMENT_PREFIX);
 }
 
-export function decodeHpkeJweFragment(fragment: string): HpkeIntegratedJwe {
+export function decodeHpkeJweFragment(fragment: string): HpkeJwe {
   const value = stripHash(fragment);
   if (!value.startsWith(HPKE_JWE_FRAGMENT_PREFIX)) {
     throw new Error("Not an HPKE JWE URL fragment");
   }
   const encoded = value.slice(HPKE_JWE_FRAGMENT_PREFIX.length);
   const json = pako.ungzip(base64url.decode(encoded), { to: "string" });
-  return JSON.parse(json) as HpkeIntegratedJwe;
+  return JSON.parse(json) as HpkeJwe;
 }

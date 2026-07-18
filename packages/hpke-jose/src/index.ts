@@ -1,4 +1,5 @@
 export * as integrated from "./integrated";
+export * as keyEncryption from "./keyEncryption";
 export * as keys from "./keys";
 export {
   SUITE_PARAMS,
@@ -21,10 +22,26 @@ export {
   type Jwk,
 } from "./keys";
 export {
-  encrypt,
-  decrypt,
   toCompact,
   fromCompact,
   type HpkeIntegratedJwe,
   type EncryptOptions,
 } from "./integrated";
+export {
+  type HpkeKeyEncryptionJwe,
+  type KeyEncryptionEncryptOptions,
+} from "./keyEncryption";
+export {
+  type JweEnc,
+  ENC_KEY_BYTES,
+  isJweEnc,
+} from "./contentEncryption";
+// Unified, mode-dispatching API (default entry points).
+export {
+  encrypt,
+  decrypt,
+  jweMode,
+  type HpkeJwe,
+  type HpkeMode,
+  type UnifiedEncryptOptions,
+} from "./jwe";

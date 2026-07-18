@@ -5,7 +5,7 @@ import * as React from "react";
 import Typography from "@mui/material/Typography";
 import { Chip } from "@mui/material";
 import LockPerson from "@mui/icons-material/LockPerson";
-import { integrated } from "@hpke-jose";
+import { decrypt as hpkeDecrypt } from "@hpke-jose";
 import { decodeHpkeJweFragment } from "@/services/hpke-url";
 import { Dropzone } from "@/app/components/Dropzone";
 import NoEncryptionIcon from "@mui/icons-material/NoEncryption";
@@ -42,7 +42,7 @@ export function Decrypt({
         const privateKeyText = await file.text();
         const privateKey = JSON.parse(privateKeyText);
         const jwe = decodeHpkeJweFragment(hpkeJweFragment);
-        const plaintext = await integrated.decrypt(jwe, privateKey);
+        const plaintext = await hpkeDecrypt(jwe, privateKey);
         setMessage(new TextDecoder().decode(plaintext));
       } catch (e) {
         setSnackMessage("Decryption failed.");
