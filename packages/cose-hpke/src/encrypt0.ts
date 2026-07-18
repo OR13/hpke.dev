@@ -1,5 +1,5 @@
 import { encode, decode, Tag } from "cbor2";
-import { cipherSuiteForAlg, isCoseHpkeAlg, type CoseHpkeAlg } from "./suites";
+import { cipherSuiteForAlg, isCoseHpkeAlg, isIntegratedAlg, type CoseHpkeAlg } from "./suites";
 import { importPrivateKey, importPublicKey, resolveAlg, type Jwk } from "./keys";
 
 /**
@@ -77,7 +77,9 @@ export async function decrypt(
     protectedBstr.length ? decode(protectedBstr) : new Map()
   ) as Map<number, unknown>;
   const alg = protectedMap.get(HEADER_ALG);
-  if (!isCoseHpkeAlg(alg)) throw new Error(`unsupported COSE HPKE alg: ${String(alg)}`);
+  if (typeof alg !== "number" || !isIntegratedAlg(alg)) {
+    throw new Error(`unsupported COSE HPKE Integrated alg: ${String(alg)}`);
+  }
 
   const enc = unprotected.get(HEADER_EK);
   if (!(enc instanceof Uint8Array)) throw new Error('missing "ek" (encapsulated key)');
