@@ -18,6 +18,15 @@ export const ENC_KEY_BYTES: Record<JweEnc, number> = {
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
 
+/**
+ * Normalize bytes into an ArrayBuffer-backed view. Web Crypto's `BufferSource`
+ * requires `Uint8Array<ArrayBuffer>`, but decoded buffers may be typed as the
+ * wider `Uint8Array<ArrayBufferLike>` (e.g. possibly SharedArrayBuffer-backed).
+ */
+function ab(u: Uint8Array): Uint8Array<ArrayBuffer> {
+  return Uint8Array.from(u);
+}
+
 export function isJweEnc(enc: unknown): enc is JweEnc {
   return typeof enc === "string" && enc in ENC_KEY_BYTES;
 }
@@ -31,7 +40,7 @@ async function importCek(enc: JweEnc, cek: Uint8Array): Promise<CryptoKey> {
   if (cek.length !== ENC_KEY_BYTES[enc]) {
     throw new Error(`CEK is ${cek.length} bytes, expected ${ENC_KEY_BYTES[enc]} for ${enc}`);
   }
-  return crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt", "decrypt"]);
+  return crypto.subtle.importKey("raw", ab(cek), "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
 /**
@@ -49,9 +58,9 @@ export async function contentEncrypt(
   const key = await importCek(enc, cek);
   const sealed = new Uint8Array(
     await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv, additionalData: aad, tagLength: TAG_BYTES * 8 },
+      { name: "AES-GCM", iv, additionalData: ab(aad), tagLength: TAG_BYTES * 8 },
       key,
-      plaintext,
+      ab(plaintext),
     ),
   );
   return {
@@ -76,9 +85,9 @@ export async function contentDecrypt(
   sealed.set(tag, ciphertext.length);
   return new Uint8Array(
     await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv, additionalData: aad, tagLength: TAG_BYTES * 8 },
+      { name: "AES-GCM", iv: ab(iv), additionalData: ab(aad), tagLength: TAG_BYTES * 8 },
       key,
-      sealed,
+      ab(sealed),
     ),
   );
 }
