@@ -1,3 +1,4 @@
+import type { PskOptions } from "./psk";
 import { decode, Tag } from "cbor2";
 import * as integrated from "./encrypt0";
 import * as keyEncryption from "./keyEncryption";
@@ -39,13 +40,16 @@ export function readAlg(message: Uint8Array): CoseHpkeAlg | undefined {
   return isCoseHpkeAlg(alg) ? alg : undefined;
 }
 
-export type UnifiedCoseEncryptOptions = {
+export type UnifiedCoseEncryptOptions = PskOptions & {
   /** Which mode to use; defaults to Integrated (COSE_Encrypt0). */
   mode?: CoseMode;
   alg?: CoseHpkeAlg;
   /** Content-encryption algorithm (Key Encryption only). */
   enc?: CoseAeadAlg;
   externalAad?: Uint8Array;
+  externalInfo?: Uint8Array;
+  recipientExtraInfo?: Uint8Array;
+  hpkeAad?: Uint8Array;
 };
 
 export async function encrypt(
@@ -54,22 +58,15 @@ export async function encrypt(
   options: UnifiedCoseEncryptOptions = {},
 ): Promise<Uint8Array> {
   if (options.mode === "keyEncryption") {
-    return keyEncryption.encrypt(plaintext, recipientPublicJwk, {
-      alg: options.alg,
-      enc: options.enc,
-      externalAad: options.externalAad,
-    });
+    return keyEncryption.encrypt(plaintext, recipientPublicJwk, options);
   }
-  return integrated.encrypt(plaintext, recipientPublicJwk, {
-    alg: options.alg,
-    externalAad: options.externalAad,
-  });
+  return integrated.encrypt(plaintext, recipientPublicJwk, options);
 }
 
 export async function decrypt(
   message: Uint8Array,
   recipientPrivateJwk: Jwk,
-  options: { externalAad?: Uint8Array } = {},
+  options: Omit<UnifiedCoseEncryptOptions, "mode" | "alg" | "enc"> = {},
 ): Promise<Uint8Array> {
   return coseMode(message) === "keyEncryption"
     ? keyEncryption.decrypt(message, recipientPrivateJwk, options)

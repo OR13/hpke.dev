@@ -1,10 +1,11 @@
+import { senderPsk, receiverPsk, HEADER_PSK_ID, type PskOptions } from "./psk";
 import { encode, decode, Tag } from "cbor2";
 import { cipherSuiteForAlg, isCoseHpkeAlg, isIntegratedAlg, type CoseHpkeAlg } from "./suites";
 import { importPrivateKey, importPublicKey, resolveAlg, type Jwk } from "./keys";
 
 /**
  * COSE HPKE Integrated Encryption with a single recipient
- * (draft-ietf-cose-hpke-26), encoded as a tagged COSE_Encrypt0:
+ * (draft-ietf-cose-hpke-27), encoded as a tagged COSE_Encrypt0:
  *
  *   16([ protected, unprotected, ciphertext ])
  *
@@ -12,7 +13,7 @@ import { importPrivateKey, importPublicKey, resolveAlg, type Jwk } from "./keys"
  * unprotected header carries the HPKE encapsulated key (`-4: ek`, a bstr), and
  * the ciphertext is the HPKE Seal output. The HPKE `aad` is the CBOR-encoded
  * Enc_structure `["Encrypt0", protected, external_aad]` (RFC 9052 §5.3); the
- * HPKE `info` is empty.
+ * HPKE `info` defaults to empty.
  */
 const COSE_ENCRYPT0_TAG = 16;
 const HEADER_ALG = 1;
@@ -23,11 +24,12 @@ function encStructure(protectedBstr: Uint8Array, externalAad: Uint8Array): Uint8
   return encode(["Encrypt0", protectedBstr, externalAad]);
 }
 
-export type CoseEncryptOptions = {
+export type CoseEncryptOptions = PskOptions & {
   /** Override the COSE HPKE algorithm; defaults to the key's curve. */
   alg?: CoseHpkeAlg;
   /** Externally supplied additional authenticated data (default: empty). */
   externalAad?: Uint8Array;
+  externalInfo?: Uint8Array;
 };
 
 /** Encrypt `plaintext` to a recipient public JWK, returning tagged COSE_Encrypt0 bytes. */
@@ -39,12 +41,16 @@ export async function encrypt(
   const alg = options.alg ?? resolveAlg(recipientPublicJwk);
   const externalAad = options.externalAad ?? EMPTY;
 
-  const protectedBstr = encode(new Map<number, number>([[HEADER_ALG, alg]]));
+  if (!isIntegratedAlg(alg)) throw new Error(`${alg} is not an Integrated alg`);
+  const psk = senderPsk(options);
+  const headers = new Map<number, unknown>([[HEADER_ALG, alg]]);
+  if (psk.pskId) headers.set(HEADER_PSK_ID, psk.pskId);
+  const protectedBstr = encode(headers);
   const aad = encStructure(protectedBstr, externalAad);
 
   const suite = cipherSuiteForAlg(alg);
   const publicKey = await importPublicKey(alg, recipientPublicJwk);
-  const { encapsulatedSecret, ciphertext } = await suite.Seal(publicKey, plaintext, { aad });
+  const { encapsulatedSecret, ciphertext } = await suite.Seal(publicKey, plaintext, { aad, info: options.externalInfo, ...psk });
 
   const unprotected = new Map<number, Uint8Array>([[HEADER_EK, encapsulatedSecret]]);
   return encode(new Tag(COSE_ENCRYPT0_TAG, [protectedBstr, unprotected, ciphertext]));
@@ -54,7 +60,7 @@ export async function encrypt(
 export async function decrypt(
   message: Uint8Array,
   recipientPrivateJwk: Jwk,
-  options: { externalAad?: Uint8Array } = {},
+  options: PskOptions & { externalAad?: Uint8Array; externalInfo?: Uint8Array } = {},
 ): Promise<Uint8Array> {
   const externalAad = options.externalAad ?? EMPTY;
 
@@ -81,13 +87,14 @@ export async function decrypt(
     throw new Error(`unsupported COSE HPKE Integrated alg: ${String(alg)}`);
   }
 
+  const psk = receiverPsk(protectedMap, unprotected, options);
   const enc = unprotected.get(HEADER_EK);
   if (!(enc instanceof Uint8Array)) throw new Error('missing "ek" (encapsulated key)');
 
   const aad = encStructure(protectedBstr, externalAad);
   const suite = cipherSuiteForAlg(alg);
   const keyPair = await importPrivateKey(alg, recipientPrivateJwk);
-  return suite.Open(keyPair, enc, ciphertext, { aad });
+  return suite.Open(keyPair, enc, ciphertext, { aad, info: options.externalInfo, ...psk });
 }
 
 /** Inspect a COSE_Encrypt0 message's algorithm without decrypting. */

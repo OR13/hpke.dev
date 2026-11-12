@@ -14,7 +14,7 @@ import {
 const utf8 = (s: string) => new TextEncoder().encode(s);
 const fromUtf8 = (b: Uint8Array) => new TextDecoder().decode(b);
 
-describe("COSE HPKE Key Encryption (draft-ietf-cose-hpke-26)", () => {
+describe("COSE HPKE Key Encryption (draft-ietf-cose-hpke-27)", () => {
   const encs: CoseAeadAlg[] = [1, 3]; // A128GCM, A256GCM
   for (const enc of encs) {
     test(`HPKE-0-KE / content-alg ${enc}: round-trips`, async () => {

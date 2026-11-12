@@ -16,7 +16,7 @@ const fromUtf8 = (b: Uint8Array) => new TextDecoder().decode(b);
 // P-256 suites are supported by Web Crypto in every target runtime.
 const ALGS: CoseHpkeAlg[] = [COSE_HPKE_ALG["HPKE-0"], COSE_HPKE_ALG["HPKE-7"]];
 
-describe("COSE HPKE Integrated Encryption (draft-ietf-cose-hpke-26)", () => {
+describe("COSE HPKE Integrated Encryption (draft-ietf-cose-hpke-27)", () => {
   for (const alg of ALGS) {
     test(`alg ${alg}: round-trips a message`, async () => {
       const { publicKeyJwk, privateKeyJwk } = await generateKeyPair(alg);
