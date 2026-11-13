@@ -1,3 +1,4 @@
+import { senderPsk, receiverPsk, HEADER_PSK_ID, type PskOptions } from "./psk";
 import { encode, decode, Tag } from "cbor2";
 import {
   cipherSuiteForAlg,
@@ -17,7 +18,7 @@ import {
 } from "./contentEncryption";
 
 /**
- * COSE HPKE Key Encryption with a single recipient (draft-ietf-cose-hpke-26),
+ * COSE HPKE Key Encryption with a single recipient (draft-ietf-cose-hpke-27),
  * encoded as a tagged COSE_Encrypt:
  *
  *   96([ protected, unprotected, ciphertext, [ recipient ] ])
@@ -26,7 +27,7 @@ import {
  * the body unprotected header carries the IV (`5: iv`), and the ciphertext is the
  * content sealed with the CEK. Each recipient is
  * `[ protected{1: HPKE-KE alg}, unprotected{-4: ek}, encrypted_key ]`, where
- * `encrypted_key` is the HPKE Seal of the CEK. The HPKE `aad` is empty and the
+ * `encrypted_key` is the HPKE Seal of the CEK. The HPKE `aad` defaults to empty and the
  * HPKE `info` is the CBOR Recipient_structure
  * `["HPKE Recipient", enc, recipient_protected, extra]` (Section 3.3.1).
  */
@@ -47,13 +48,15 @@ const DEFAULT_CONTENT_ALG: Record<number, CoseAeadAlg> = {
   53: 3, // HPKE-7-KE  -> A256GCM
 };
 
-export type CoseKeyEncryptionOptions = {
+export type CoseKeyEncryptionOptions = PskOptions & {
   /** Override the HPKE Key Encryption algorithm; defaults to the key's curve. */
   alg?: CoseHpkeAlg;
   /** Content-encryption algorithm; defaults per the chosen -KE algorithm. */
   enc?: CoseAeadAlg;
   /** Externally supplied additional authenticated data for layer 0. */
   externalAad?: Uint8Array;
+  recipientExtraInfo?: Uint8Array;
+  hpkeAad?: Uint8Array;
 };
 
 export function resolveKeyEncryptionAlg(jwk: Jwk, override?: CoseHpkeAlg): CoseHpkeAlg {
@@ -69,7 +72,7 @@ function recipientInfo(
   recipientProtected: Uint8Array,
   extra: Uint8Array = EMPTY,
 ): Uint8Array {
-  return encode(["HPKE Recipient", enc, recipientProtected, extra]);
+  return encode(["HPKE Recipient", enc, recipientProtected, extra], { cde: true });
 }
 
 /** Layer-0 AAD: Enc_structure ["Encrypt", body_protected, external_aad]. */
@@ -89,11 +92,16 @@ export async function encrypt(
 
   // Wrap a fresh CEK to the recipient with HPKE (aad empty, info = Recipient_structure).
   const cek = generateCek(enc);
-  const recipientProtected = encode(new Map<number, number>([[HEADER_ALG, alg]]));
+  const psk = senderPsk(options);
+  const headers = new Map<number, unknown>([[HEADER_ALG, alg]]);
+  if (psk.pskId) headers.set(HEADER_PSK_ID, psk.pskId);
+  const recipientProtected = encode(headers);
   const suite = cipherSuiteForAlg(alg);
   const publicKey = await importPublicKey(alg, recipientPublicJwk);
   const { encapsulatedSecret, ciphertext: encryptedKey } = await suite.Seal(publicKey, cek, {
-    info: recipientInfo(enc, recipientProtected),
+    info: recipientInfo(enc, recipientProtected, options.recipientExtraInfo),
+    aad: options.hpkeAad,
+    ...psk,
   });
 
   // Encrypt the content with the CEK at layer 0.
@@ -121,7 +129,7 @@ export async function encrypt(
 export async function decrypt(
   message: Uint8Array,
   recipientPrivateJwk: Jwk,
-  options: { externalAad?: Uint8Array } = {},
+  options: PskOptions & { externalAad?: Uint8Array; recipientExtraInfo?: Uint8Array; hpkeAad?: Uint8Array } = {},
 ): Promise<Uint8Array> {
   const externalAad = options.externalAad ?? EMPTY;
 
@@ -166,11 +174,15 @@ export async function decrypt(
   const ek = recipientUnprotected.get(HEADER_EK);
   if (!(ek instanceof Uint8Array)) throw new Error('missing "ek" (encapsulated key)');
 
+  const psk = receiverPsk(recipientProtectedMap, recipientUnprotected, options);
+
   // Unwrap the CEK, then decrypt the content.
   const suite = cipherSuiteForAlg(alg as CoseHpkeAlg);
   const keyPair = await importPrivateKey(alg as CoseHpkeAlg, recipientPrivateJwk);
   const cek = await suite.Open(keyPair, ek, encryptedKey, {
-    info: recipientInfo(enc, recipientProtected),
+    info: recipientInfo(enc, recipientProtected, options.recipientExtraInfo),
+    aad: options.hpkeAad,
+    ...psk,
   });
 
   return contentDecrypt(enc, cek, iv, ciphertext, contentAad(bodyProtected, externalAad));

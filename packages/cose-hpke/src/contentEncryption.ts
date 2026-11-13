@@ -1,17 +1,18 @@
+import { AEAD_ChaCha20Poly1305 } from "hpke";
 /**
  * Layer-0 content encryption for COSE HPKE Key Encryption. HPKE wraps a random
- * CEK; the content itself is encrypted with a COSE AES-GCM content algorithm.
+ * CEK; the content itself is encrypted with a COSE AEAD content algorithm.
  * COSE carries the AEAD tag appended to the ciphertext (no separate tag field).
  */
 
-/** COSE AES-GCM content-encryption algorithm identifiers (RFC 9053). */
-export type CoseAeadAlg = 1 | 2 | 3; // A128GCM, A192GCM, A256GCM
+/** COSE content-encryption algorithm identifiers (RFC 9053). */
+export type CoseAeadAlg = 1 | 2 | 3 | 24; // A128GCM, A192GCM, A256GCM, ChaCha20/Poly1305
 
-export const AEAD_KEY_BYTES: Record<CoseAeadAlg, number> = { 1: 16, 2: 24, 3: 32 };
+export const AEAD_KEY_BYTES: Record<CoseAeadAlg, number> = { 1: 16, 2: 24, 3: 32, 24: 32 };
 const IV_BYTES = 12;
 
 export function isCoseAeadAlg(alg: unknown): alg is CoseAeadAlg {
-  return alg === 1 || alg === 2 || alg === 3;
+  return alg === 1 || alg === 2 || alg === 3 || alg === 24;
 }
 
 /** ArrayBuffer-backed view for Web Crypto's BufferSource (TS 5.7 strictness). */
@@ -42,6 +43,8 @@ export async function contentEncrypt(
   plaintext: Uint8Array,
   aad: Uint8Array,
 ): Promise<Uint8Array> {
+  if (iv.length !== IV_BYTES) throw new Error("COSE AES-GCM IV must be 12 bytes");
+  if (alg === 24) return AEAD_ChaCha20Poly1305().Seal(cek, iv, aad, plaintext);
   const key = await importCek(alg, cek);
   return new Uint8Array(
     await crypto.subtle.encrypt(
@@ -59,6 +62,8 @@ export async function contentDecrypt(
   ciphertext: Uint8Array,
   aad: Uint8Array,
 ): Promise<Uint8Array> {
+  if (iv.length !== IV_BYTES) throw new Error("COSE AES-GCM IV must be 12 bytes");
+  if (alg === 24) return AEAD_ChaCha20Poly1305().Open(cek, iv, aad, ciphertext);
   const key = await importCek(alg, cek);
   return new Uint8Array(
     await crypto.subtle.decrypt(

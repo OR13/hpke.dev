@@ -18,7 +18,7 @@ import {
 
 /**
  * COSE HPKE Integrated Encryption algorithm identifiers
- * (draft-ietf-cose-hpke-26, Section 7.2).
+ * (draft-ietf-cose-hpke-27, Section 7.2).
  *
  * Values are the draft's assumed integer registrations. HPKE-0 (35) uses the
  * same ciphersuite as JOSE HPKE-0: DHKEM(P-256,HKDF-SHA256)+HKDF-SHA256+AES-128-GCM.
@@ -34,7 +34,7 @@ export const COSE_HPKE_ALG = {
   "HPKE-7": 45,
 } as const;
 
-/** HPKE Key Encryption identifiers (draft-ietf-cose-hpke-26, Section 7.2). */
+/** HPKE Key Encryption identifiers (draft-ietf-cose-hpke-27, Section 7.2). */
 export const COSE_HPKE_KE_ALG = {
   "HPKE-0-KE": 46,
   "HPKE-1-KE": 47,
